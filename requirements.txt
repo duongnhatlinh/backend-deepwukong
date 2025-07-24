@@ -1,0 +1,48 @@
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.13.1
+
+# Data Validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# File Handling
+python-multipart==0.0.6
+aiofiles==23.2.0
+
+# DeepWukong Dependencies (từ source code gốc)
+torch==2.2.0
+torchvision==0.17.0
+torchaudio==2.2.0
+torch-geometric==2.4.0
+lightning==2.1.3
+torchmetrics==1.2.1
+networkx==3.2.1
+omegaconf==2.3.0
+gensim==4.3.2
+scipy==1.10.1
+tqdm==4.66.1
+dpu-utils==0.6.1
+datasets==2.15.0
+wordninja==2.0.0
+commode-utils==0.5.0
+scikit-learn==1.3.2
+
+# Utilities
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.0
+redis==5.0.1
+
+# Development
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.12.1
+mypy==1.7.1
+
+# Important constraint
+numpy<2.0

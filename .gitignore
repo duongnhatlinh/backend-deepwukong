@@ -1,0 +1,129 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+storage/logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+storage/*.db
+
+# Temporary files
+storage/uploads/
+storage/results/
+temp/
+tmp/
+
+# Model files (usually too large for git)
+storage/models/*.ckpt
+storage/models/*.pt
+storage/models/*.pth
+*.ckpt
+*.pt
+*.pth
+
+# DeepWukong specific
+deepwukong/data/
+deepwukong/model_pretrained/
+deepwukong/joern/
+deepwukong/vulnerable_commit/
+!deepwukong/vulnerable_commit/manifest_generator.py
+!deepwukong/vulnerable_commit/firmware_config.json
+deepwukong/ts_logger/
+deepwukong/src/debuger
+deepwukong/src/detect.py
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Documentation
+docs/_build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyTorch
+*.pth
+*.tar.gz
+
+# Data files
+*.csv
+*.json
+*.txt
+!requirements.txt
+!README.txt
+
+# Large data directories
+data/
+datasets/
+results/
+outputs/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Docker
+.dockerignore
+
