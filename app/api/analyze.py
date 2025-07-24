@@ -35,10 +35,10 @@ async def analyze_file(
         raise HTTPException(status_code=400, detail="No filename provided")
     
     file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in settings.ALLOWED_EXTENSIONS:
+    if file_ext not in settings.allowed_extensions_list:
         raise HTTPException(
             status_code=400, 
-            detail=f"File type not supported. Allowed: {settings.ALLOWED_EXTENSIONS}"
+            detail=f"File type not supported. Allowed: {settings.allowed_extensions_list}"
         )
     
     # Read and validate file size

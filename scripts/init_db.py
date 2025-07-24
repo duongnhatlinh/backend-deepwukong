@@ -21,10 +21,14 @@ def init_database():
     try:
         # Import all models to ensure they're registered
         from app.models.analysis import Analysis
+        from app.models.base import BaseModel
+
+        # Verify models are registered
+        print(f"📋 Models found: {list(Base.metadata.tables.keys())}")
         
         # Create all tables
         Base.metadata.create_all(bind=engine)
-        
+
         print("✅ Database initialized successfully!")
         print("📊 Tables created:")
         for table_name in Base.metadata.tables.keys():

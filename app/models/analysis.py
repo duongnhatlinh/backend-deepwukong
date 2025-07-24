@@ -4,8 +4,9 @@ Analysis database models
 
 from sqlalchemy import Column, String, Integer, Text, Float, DateTime
 from app.models.base import BaseModel
+from app.database import Base
 
-class Analysis(BaseModel):
+class Analysis(BaseModel, Base):
     __tablename__ = "analyses"
     
     # Basic info

@@ -39,7 +39,7 @@ keywords = frozenset({
     'typedef', 'typeid', 'typename', 'union', 'unsigned', 'using', 'virtual',
     'void', 'volatile', 'wchar_t', 'while', 'xor', 'xor_eq', 'NULL'
 })
-with open(r"data/sensiAPI.txt",
+with open(r"deepwukong/data/sensiAPI.txt",
           "r") as f:
     a = f.read().split(',')
 keywords = keywords.union(a)

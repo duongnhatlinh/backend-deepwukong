@@ -31,6 +31,20 @@ from src.utils import filter_warnings, write_gpickle, read_gpickle
 from omegaconf import OmegaConf
 
 
+# Import settings để lấy environment variables
+try:
+    # Try to import from app config if available
+    sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
+    from app.config import settings
+    JOERN_PATH = settings.JOERN_PATH
+    SENSIAPI_PATH = settings.SENSIAPI_PATH
+except ImportError:
+    # Fallback to direct environment variable
+    JOERN_PATH = os.getenv('JOERN_PATH', './deepwukong/joern/joern-parse')
+    SENSIAPI_PATH = os.getenv('SENSIAPI_PATH', './deepwukong/data/sensiAPI.txt')
+    print(f"Warning: Using fallback JOERN_PATH: {JOERN_PATH}")
+
+
 class VulnerabilityDetector:
     """Enhanced vulnerability detector with automated pipeline"""
     
@@ -118,7 +132,7 @@ class VulnerabilityDetector:
             csv_output_dir = os.path.join(temp_dir, "data_test", "csv")
             os.makedirs(csv_output_dir, exist_ok=True)
 
-            joern_cmd = f"{self.config.joern_path} {csv_output_dir} {source_dir}"
+            joern_cmd = f"{JOERN_PATH} {csv_output_dir} {source_dir}"
             print(f"Running Joern: {joern_cmd}")
 
             system(joern_cmd)
@@ -190,7 +204,7 @@ class VulnerabilityDetector:
                 return []
             
             # Step 3: Check for sensitive API file
-            sensi_api_path = os.path.join(self.config.data_folder, "sensiAPI.txt")
+            sensi_api_path = SENSIAPI_PATH
             if not os.path.exists(sensi_api_path):
                 raise FileNotFoundError(f"SensiAPI file not found: {sensi_api_path}")
             
@@ -303,11 +317,8 @@ class VulnerabilityDetector:
                     print(f"  → Error processing {original_file}: {e}")
                     continue
 
-            return all_results              
-            
+            return all_results
 
-        
-            
         except Exception as e:
             print(f"Error processing file {source_path}: {e}")
             import traceback
@@ -321,9 +332,6 @@ class VulnerabilityDetector:
             except Exception as e:
                 print(f"Warning: Could not cleanup temp directory {temp_dir}: {e}")
             
-            
-    
-    
     
     def save_results(self, results: List[Dict], output_file: str):
         """Save detection results to file"""

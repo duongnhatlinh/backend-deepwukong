@@ -85,6 +85,9 @@ deepwukong/ts_logger/
 deepwukong/src/debuger
 deepwukong/src/detect.py
 
+# Test
+tests/fixtures/
+
 # Test coverage
 .coverage
 htmlcov/

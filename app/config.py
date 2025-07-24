@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
     
     # Database
     DATABASE_URL: str = "sqlite:///./storage/deepwukong.db"
@@ -29,12 +29,13 @@ class Settings(BaseSettings):
     
     # File Limits
     MAX_FILE_SIZE_MB: int = 10
-    ALLOWED_EXTENSIONS: List[str] = [".c", ".cpp", ".h", ".hpp", ".cc", ".cxx"]
+    ALLOWED_EXTENSIONS: str = ".c,.cpp,.h,.hpp,.cc,.cxx"
     
     # DeepWukong
     DEEPWUKONG_MODEL_PATH: str = "./storage/models/deepwukong_current.ckpt"
     DEEPWUKONG_CONFIG_PATH: str = "./deepwukong/configs/dwk.yaml"
     JOERN_PATH: str = "./deepwukong/joern/joern-parse"
+    SENSIAPI_PATH: str = "./deepwukong/data/sensiAPI.txt"
     
     # AI Configuration
     DEFAULT_CONFIDENCE_THRESHOLD: float = 0.7
@@ -57,6 +58,16 @@ class Settings(BaseSettings):
             self.LOGS_DIR
         ]:
             os.makedirs(directory, exist_ok=True)
+    
+    @property
+    def allowed_origins_list(self) -> List[str]:
+        """Convert ALLOWED_ORIGINS string to list"""
+        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
+    
+    @property
+    def allowed_extensions_list(self) -> List[str]:
+        """Convert ALLOWED_EXTENSIONS string to list"""
+        return [ext.strip() for ext in self.ALLOWED_EXTENSIONS.split(",")]
 
 # Create settings instance
 settings = Settings()
