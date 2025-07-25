@@ -28,7 +28,8 @@ class AnalysisService:
         file_size: int,
         results: Dict[str, Any],
         confidence_threshold: float,
-        model_version: str = None
+        model_version: str = None,
+        batch_analysis_id: str = None  # ← THÊM PARAMETER NÀY
     ) -> str:
         """Save analysis results to database"""
         try:
@@ -48,6 +49,7 @@ class AnalysisService:
                 model_version=model_version or results.get("model_version", "unknown"),
                 confidence_threshold=confidence_threshold,
                 results_json=json.dumps(results),
+                batch_analysis_id=batch_analysis_id,  # ← THÊM FIELD NÀY
                 started_at=datetime.now(),
                 completed_at=datetime.now()
             )
@@ -68,7 +70,8 @@ class AnalysisService:
         file_path: str,
         file_size: int,
         error_message: str,
-        confidence_threshold: float
+        confidence_threshold: float,
+        batch_analysis_id: str = None  # ← THÊM PARAMETER NÀY
     ) -> str:
         """Save failed analysis to database"""
         try:
@@ -79,6 +82,7 @@ class AnalysisService:
                 status="failed",
                 error_message=error_message,
                 confidence_threshold=confidence_threshold,
+                batch_analysis_id=batch_analysis_id,  # ← THÊM FIELD NÀY
                 started_at=datetime.now(),
                 completed_at=datetime.now()
             )
@@ -93,6 +97,7 @@ class AnalysisService:
             self.db.rollback()
             raise Exception(f"Failed to save failed analysis: {str(e)}")
     
+    # Các methods khác giữ nguyên...
     async def get_analysis(self, analysis_id: str) -> Optional[Dict]:
         """Get analysis by ID"""
         try:

@@ -21,6 +21,7 @@ def init_database():
     try:
         # Import all models to ensure they're registered
         from app.models.analysis import Analysis
+        from app.models.batch_analysis import BatchAnalysis
         from app.models.base import BaseModel
 
         # Verify models are registered

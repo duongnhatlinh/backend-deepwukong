@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     # File Limits
     MAX_FILE_SIZE_MB: int = 10
     ALLOWED_EXTENSIONS: str = ".c,.cpp,.h,.hpp,.cc,.cxx"
+
+    # Batch Analysis Limits
+    MAX_BATCH_FILES: int = 50
+    MAX_ZIP_SIZE_MB: int = 100
+    BATCH_PROCESSING_TIMEOUT: int = 3600  # 1 hour
     
     # DeepWukong
     DEEPWUKONG_MODEL_PATH: str = "./storage/models/deepwukong_current.ckpt"

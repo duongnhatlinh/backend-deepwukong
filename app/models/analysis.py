@@ -2,7 +2,7 @@
 Analysis database models
 """
 
-from sqlalchemy import Column, String, Integer, Text, Float, DateTime
+from sqlalchemy import Column, String, Integer, Text, Float, DateTime, ForeignKey
 from app.models.base import BaseModel
 from app.database import Base
 
@@ -32,6 +32,9 @@ class Analysis(BaseModel, Base):
     # Error handling
     error_message = Column(Text)
     
+    # Batch analysis relationship
+    batch_analysis_id = Column(String, ForeignKey('batch_analyses.id'), nullable=True)
+    
     # Timestamps
     started_at = Column(DateTime)
     completed_at = Column(DateTime)
@@ -51,6 +54,7 @@ class Analysis(BaseModel, Base):
             "confidence_threshold": self.confidence_threshold,
             "results_json": self.results_json,
             "error_message": self.error_message,
+            "batch_analysis_id": self.batch_analysis_id,
             "started_at": self.started_at,
             "completed_at": self.completed_at,
             "created_at": self.created_at,

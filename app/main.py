@@ -12,7 +12,7 @@ import os
 from app.config import settings
 from app.database import init_db
 from app.services.deepwukong_service import DeepWuKongService
-from app.api import ai, analyze, health
+from app.api import ai, analyze, health, batch_analyze
 from app.core.exceptions import setup_exception_handlers
 
 # Setup logging
@@ -105,6 +105,7 @@ setup_exception_handlers(app)
 app.include_router(health.router, prefix="/api", tags=["Health"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI Model"])
 app.include_router(analyze.router, prefix="/api", tags=["Analysis"])
+app.include_router(batch_analyze.router, prefix="/api", tags=["Batch Analysis"])
 
 @app.get("/", tags=["Root"])
 async def root():
@@ -131,7 +132,11 @@ async def api_info():
             "ai_status": "/api/ai/status",
             "ai_info": "/api/ai/info", 
             "analyze": "/api/analyze",
-            "analyses": "/api/analyses"
+            "analyze_multiple": "/api/analyze-multiple",
+            "analyze_zip": "/api/analyze-zip",
+            "analyze_directory": "/api/analyze-directory",
+            "analyses": "/api/analyses",
+            "batch_analyses": "/api/batch-analyses"
         },
         "supported_files": settings.allowed_extensions_list,
         "max_file_size_mb": settings.MAX_FILE_SIZE_MB
