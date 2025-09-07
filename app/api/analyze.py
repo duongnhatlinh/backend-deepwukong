@@ -5,6 +5,7 @@ Analysis API endpoints
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from typing import Optional, List
 import os
+import tempfile
 import aiofiles
 from datetime import datetime
 import asyncio
@@ -26,77 +27,91 @@ def get_deepwukong_service() -> DeepWuKongService:
     return app.state.deepwukong
 
 @router.post("/analyze", response_model=SuccessResponse)
-async def analyze_files(
-    files: List[UploadFile] = File(...),
+async def analyze_file(
+    file: UploadFile = File(...),
     name: Optional[str] = Form(None),
     service: DeepWuKongService = Depends(get_deepwukong_service)
 ):
-    """Analyze multiple files for vulnerabilities and return detailed results"""
+    """Analyze a single file for vulnerabilities and return detailed results"""
     
-    if not files:
-        raise HTTPException(status_code=400, detail="No files provided")
-    
-    if len(files) > 50:  # Limit number of files
-        raise HTTPException(status_code=400, detail="Too many files. Maximum 50 files allowed")
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
     
     # Get confidence threshold from database settings
     settings_service = SettingsService()
     confidence_threshold = await settings_service.get_setting("confidence_threshold", 0.7)
     
-    # Validate all files first
-    validated_files = []
-    for file in files:
-        if not file.filename:
-            raise HTTPException(status_code=400, detail=f"No filename provided for one of the files")
-        
-        file_ext = os.path.splitext(file.filename)[1].lower()
-        if file_ext not in settings.allowed_extensions_list:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"File type not supported for {file.filename}. Allowed: {settings.allowed_extensions_list}"
-            )
-        
-        # Read and validate file size
-        content = await file.read()
-        file_size = len(content)
-        
-        if file_size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File {file.filename} too large. Max size: {settings.MAX_FILE_SIZE_MB}MB"
-            )
-        
-        if file_size == 0:
-            raise HTTPException(status_code=400, detail=f"File {file.filename} is empty")
-        
-        validated_files.append((content, file.filename))
+    # Validate file extension
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in settings.allowed_extensions_list:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"File type not supported for {file.filename}. Allowed: {settings.allowed_extensions_list}"
+        )
     
-    batch_service = BatchAnalysisService()
+    # Read and validate file size
+    content = await file.read()
+    file_size = len(content)
     
+    if file_size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File {file.filename} too large. Max size: {settings.MAX_FILE_SIZE_MB}MB"
+        )
+    
+    if file_size == 0:
+        raise HTTPException(status_code=400, detail=f"File {file.filename} is empty")
+    
+    # Create temporary file for analysis
+    temp_file_path = None
     try:
-        # Use batch analysis service to process multiple files
-        batch_id = await batch_service.analyze_multiple_files(
-            files=validated_files,
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix=file_ext) as temp_file:
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        
+        # Prepare analysis options
+        analysis_options = {
+            "confidence_threshold": confidence_threshold
+        }
+        
+        # Analyze file using DeepWuKong service
+        results = await service.analyze_file(temp_file_path, analysis_options)
+        
+        # Override the file_analyzed field with the original filename
+        results["file_analyzed"] = file.filename
+        
+        # Save analysis results to database
+        analysis_service = AnalysisService()
+        analysis_id = await analysis_service.save_analysis(
+            file_name=file.filename,
+            file_path=temp_file_path,
+            file_size=file_size,
+            results=results,
             confidence_threshold=confidence_threshold,
-            deepwukong_service=service,
-            name=name
+            name=name,
+            model_version=results.get("model_version")
         )
         
-        # Get the detailed results immediately
-        batch_result = await batch_service.get_batch_analysis(batch_id)
-        
-        if not batch_result:
-            raise HTTPException(status_code=500, detail="Failed to retrieve analysis results")
+        # Add analysis ID to results
+        results["analysis_id"] = analysis_id
         
         return SuccessResponse(
-            data=batch_result,
-            message=f"Files analyzed successfully. {batch_result.successful_files} successful, {batch_result.failed_files} failed"
+            data=results,
+            message="File analyzed successfully"
         )
         
     except AnalysisError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+    finally:
+        # Clean up temporary file
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except Exception:
+                pass  # Ignore cleanup errors
 
 @router.get("/analyses", response_model=SuccessResponse)
 async def list_analyses(
