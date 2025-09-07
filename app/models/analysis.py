@@ -10,6 +10,7 @@ class Analysis(BaseModel, Base):
     __tablename__ = "analyses"
     
     # Basic info
+    name = Column(String, nullable=True)  # Tên phân tích do người dùng đặt
     file_name = Column(String, nullable=False)
     file_path = Column(String)
     file_size = Column(Integer)  # bytes
@@ -43,6 +44,7 @@ class Analysis(BaseModel, Base):
         """Convert model to dictionary"""
         return {
             "id": self.id,
+            "name": self.name,
             "file_name": self.file_name,
             "file_path": self.file_path,
             "file_size": self.file_size,

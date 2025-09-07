@@ -40,7 +40,8 @@ class BatchAnalysisService:
         self, 
         files: List[tuple],  # List of (file_content, filename) tuples
         confidence_threshold: float,
-        deepwukong_service: DeepWuKongService
+        deepwukong_service: DeepWuKongService,
+        name: str = None
     ) -> str:
         """
         Analyze multiple files
@@ -53,6 +54,7 @@ class BatchAnalysisService:
         """
         # Create batch analysis record
         batch_analysis = BatchAnalysis(
+            name=name,
             total_files=len(files),
             status="processing",
             confidence_threshold=confidence_threshold,
@@ -88,7 +90,8 @@ class BatchAnalysisService:
         directory_path: str,
         confidence_threshold: float,
         max_files: int,
-        deepwukong_service: DeepWuKongService
+        deepwukong_service: DeepWuKongService,
+        name: str = None
     ) -> str:
         """
         Analyze all files in a directory
@@ -108,6 +111,7 @@ class BatchAnalysisService:
         
         # Create batch analysis record
         batch_analysis = BatchAnalysis(
+            name=name,
             total_files=len(valid_files),
             status="processing",
             confidence_threshold=confidence_threshold,
@@ -433,6 +437,7 @@ class BatchAnalysisService:
             
             return BatchAnalysisResult(
                 batch_id=batch_id,
+                name=batch_analysis.name,
                 status=batch_analysis.status,
                 total_files=batch_analysis.total_files,
                 successful_files=batch_analysis.successful_files,
@@ -467,6 +472,7 @@ class BatchAnalysisService:
             for batch in batch_analyses:
                 item = BatchAnalysisListItem(
                     id=batch.id,
+                    name=batch.name,
                     timestamp=batch.created_at,
                     total_files=batch.total_files,
                     successful_files=batch.successful_files,
@@ -506,3 +512,95 @@ class BatchAnalysisService:
         except Exception as e:
             self.db.rollback()
             raise Exception(f"Failed to delete batch analysis: {str(e)}")
+    async def get_detailed_batch_analyses(self, limit: int = 10, offset: int = 0) -> 'BatchAnalysisDetailedListResponse':
+        """Get detailed list of batch analyses with full information including file results"""
+        try:
+            from app.schemas.batch_analysis import BatchAnalysisDetailedListResponse, BatchAnalysisDetailedItem
+            
+            # Get total count
+            total = self.db.query(BatchAnalysis).count()
+            
+            # Get batch analyses with pagination
+            batch_analyses = (
+                self.db.query(BatchAnalysis)
+                .order_by(desc(BatchAnalysis.created_at))
+                .offset(offset)
+                .limit(limit)
+                .all()
+            )
+            
+            # Convert to detailed response format
+            detailed_items = []
+            for batch in batch_analyses:
+                # Get file analyses for this batch
+                file_analyses = (
+                    self.db.query(Analysis)
+                    .filter(Analysis.batch_analysis_id == batch.id)
+                    .all()
+                )
+                
+                # Convert file analyses to FileAnalysisResult
+                file_results = []
+                most_vulnerable_files = []
+                
+                for analysis in file_analyses:
+                    # Parse results JSON
+                    results_data = None
+                    if analysis.results_json:
+                        try:
+                            results_data = json.loads(analysis.results_json)
+                        except:
+                            results_data = None
+                    
+                    # Create FileAnalysisResult
+                    file_result = FileAnalysisResult(
+                        file_name=analysis.file_name,
+                        file_path=analysis.file_path or "",
+                        status=analysis.status,
+                        results=results_data,
+                        error_message=analysis.error_message,
+                        processing_time_seconds=analysis.processing_time_seconds
+                    )
+                    file_results.append(file_result)
+                    
+                    # Track most vulnerable files
+                    if analysis.vulnerabilities_count and analysis.vulnerabilities_count > 0:
+                        most_vulnerable_files.append(analysis.file_name)
+                
+                # Sort most vulnerable files by vulnerability count
+                most_vulnerable_files.sort(key=lambda x: next(
+                    (a.vulnerabilities_count for a in file_analyses if a.file_name == x), 0
+                ), reverse=True)
+                
+                # Create detailed item
+                detailed_item = BatchAnalysisDetailedItem(
+                    id=batch.id,
+                    name=batch.name,
+                    timestamp=batch.created_at,
+                    total_files=batch.total_files,
+                    successful_files=batch.successful_files,
+                    failed_files=batch.failed_files,
+                    status=batch.status,
+                    total_vulnerabilities=batch.total_vulnerabilities,
+                    total_high_confidence=batch.total_high_confidence or 0,
+                    processing_time_seconds=batch.processing_time_seconds,
+                    confidence_threshold=batch.confidence_threshold,
+                    source_type=batch.source_type,
+                    source_info=batch.source_info,
+                    error_message=batch.error_message,
+                    started_at=batch.started_at,
+                    completed_at=batch.completed_at,
+                    file_results=file_results,
+                    most_vulnerable_files=most_vulnerable_files[:5]  # Top 5 most vulnerable files
+                )
+                detailed_items.append(detailed_item)
+            
+            return BatchAnalysisDetailedListResponse(
+                batch_analyses=detailed_items,
+                total=total,
+                limit=limit,
+                offset=offset
+            )
+            
+        except Exception as e:
+            raise Exception(f"Failed to get detailed batch analyses: {str(e)}")

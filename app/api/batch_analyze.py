@@ -12,11 +12,12 @@ from datetime import datetime
 import asyncio
 
 from app.schemas.batch_analysis import (
-    BatchAnalysisResult, BatchAnalysisCreateRequest, BatchAnalysisListResponse
+    BatchAnalysisResult, BatchAnalysisCreateRequest, BatchAnalysisListResponse, BatchAnalysisDetailedListResponse
 )
 from app.schemas.common import SuccessResponse
 from app.services.deepwukong_service import DeepWuKongService
 from app.services.batch_analysis_service import BatchAnalysisService
+from app.services.settings_service import SettingsService
 from app.core.exceptions import AnalysisError
 from app.config import settings
 
@@ -29,24 +30,23 @@ def get_deepwukong_service() -> DeepWuKongService:
 @router.post("/analyze-multiple", response_model=SuccessResponse)
 async def analyze_multiple_files(
     files: List[UploadFile] = File(...),
-    confidence_threshold: Optional[float] = Form(0.7),
+    name: Optional[str] = Form(None),
+    
     service: DeepWuKongService = Depends(get_deepwukong_service)
 ):
     """Analyze multiple files for vulnerabilities"""
     
     # Validate files count
+
+    # Get confidence threshold from database settings
+    settings_service = SettingsService()
+    confidence_threshold = await settings_service.get_setting("confidence_threshold", 0.7)
     if len(files) > settings.MAX_BATCH_FILES:
         raise HTTPException(
             status_code=400,
             detail=f"Too many files. Maximum allowed: {settings.MAX_BATCH_FILES}"
         )
     
-    # Validate confidence threshold
-    if not 0.0 <= confidence_threshold <= 1.0:
-        raise HTTPException(
-            status_code=400,
-            detail="Confidence threshold must be between 0.0 and 1.0"
-        )
     
     # Validate and prepare files
     prepared_files = []
@@ -87,12 +87,13 @@ async def analyze_multiple_files(
     try:
         # Start batch analysis
         batch_id = await batch_service.analyze_multiple_files(
-            prepared_files, confidence_threshold, service
+            prepared_files, confidence_threshold, service, name
         )
         
         return SuccessResponse(
             data={
                 "batch_id": batch_id,
+                "name": name,
                 "status": "processing",
                 "total_files": len(prepared_files),
                 "message": f"Batch analysis started for {len(prepared_files)} files"
@@ -108,7 +109,8 @@ async def analyze_multiple_files(
 @router.post("/analyze-zip", response_model=SuccessResponse)
 async def analyze_zip_file(
     zip_file: UploadFile = File(...),
-    confidence_threshold: Optional[float] = Form(0.7),
+    name: Optional[str] = Form(None),
+    
     max_files: Optional[int] = Form(50),
     service: DeepWuKongService = Depends(get_deepwukong_service)
 ):
@@ -124,6 +126,10 @@ async def analyze_zip_file(
         raise HTTPException(status_code=400, detail="ZIP file too large (max 100MB)")
     
     # Validate parameters
+
+    # Get confidence threshold from database settings
+    settings_service = SettingsService()
+    confidence_threshold = await settings_service.get_setting("confidence_threshold", 0.7)
     if not 0.0 <= confidence_threshold <= 1.0:
         raise HTTPException(
             status_code=400,
@@ -164,12 +170,13 @@ async def analyze_zip_file(
         batch_service = BatchAnalysisService()
         
         batch_id = await batch_service.analyze_directory(
-            extract_dir, confidence_threshold, max_files, service
+            extract_dir, confidence_threshold, max_files, service, name
         )
         
         return SuccessResponse(
             data={
                 "batch_id": batch_id,
+                "name": name,
                 "status": "processing",
                 "source": "zip_file",
                 "zip_filename": zip_file.filename,
@@ -192,7 +199,8 @@ async def analyze_zip_file(
 @router.post("/analyze-directory", response_model=SuccessResponse)
 async def analyze_directory_path(
     directory_path: str = Form(...),
-    confidence_threshold: Optional[float] = Form(0.7),
+    name: Optional[str] = Form(None),
+    
     max_files: Optional[int] = Form(50),
     service: DeepWuKongService = Depends(get_deepwukong_service)
 ):
@@ -211,6 +219,10 @@ async def analyze_directory_path(
         raise HTTPException(status_code=400, detail="Directory not found")
     
     # Validate parameters
+
+    # Get confidence threshold from database settings
+    settings_service = SettingsService()
+    confidence_threshold = await settings_service.get_setting("confidence_threshold", 0.7)
     if not 0.0 <= confidence_threshold <= 1.0:
         raise HTTPException(
             status_code=400,
@@ -227,12 +239,13 @@ async def analyze_directory_path(
     
     try:
         batch_id = await batch_service.analyze_directory(
-            directory_path, confidence_threshold, max_files, service
+            directory_path, confidence_threshold, max_files, service, name
         )
         
         return SuccessResponse(
             data={
                 "batch_id": batch_id,
+                "name": name,
                 "status": "processing",
                 "directory_path": directory_path,
                 "max_files": max_files,
@@ -248,7 +261,7 @@ async def analyze_directory_path(
 
 @router.get("/batch-analyses", response_model=SuccessResponse)
 async def list_batch_analyses(
-    limit: int = Query(10, ge=1, le=100),
+    limit: int = Query(10, ge=1, le=1000),
     offset: int = Query(0, ge=0)
 ):
     """Get list of batch analyses with pagination"""
@@ -328,5 +341,21 @@ async def get_batch_analysis_status(batch_id: str):
         )
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/batch-analyses-detailed", response_model=SuccessResponse)
+async def get_detailed_batch_analyses(
+    limit: int = Query(10, ge=1, le=1000),
+    offset: int = Query(0, ge=0)
+):
+    """Get detailed list of batch analyses with full information including file results"""
+    try:
+        batch_service = BatchAnalysisService()
+        detailed_batch_analyses = await batch_service.get_detailed_batch_analyses(limit=limit, offset=offset)
+        
+        return SuccessResponse(
+            data=detailed_batch_analyses,
+            message="Detailed batch analyses retrieved successfully"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

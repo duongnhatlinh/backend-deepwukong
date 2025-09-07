@@ -28,6 +28,7 @@ class FileAnalysisResult(BaseModel):
 
 class BatchAnalysisResult(BaseModel):
     batch_id: str
+    name: Optional[str] = None
     status: BatchAnalysisStatus
     total_files: int
     successful_files: int
@@ -44,6 +45,7 @@ class BatchAnalysisResult(BaseModel):
         use_enum_values = True
 
 class BatchAnalysisCreateRequest(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=255, description="Tên mô tả cho phân tích batch")
     confidence_threshold: Optional[float] = Field(default=0.7, ge=0.0, le=1.0)
     max_files: Optional[int] = Field(default=50, ge=1, le=100)  # Limit for safety
     
@@ -52,6 +54,7 @@ class BatchAnalysisCreateRequest(BaseModel):
 
 class BatchAnalysisListItem(BaseModel):
     id: str
+    name: Optional[str] = None
     timestamp: datetime
     total_files: int
     successful_files: int
@@ -65,6 +68,40 @@ class BatchAnalysisListItem(BaseModel):
 
 class BatchAnalysisListResponse(BaseModel):
     batch_analyses: List[BatchAnalysisListItem]
+    total: int
+    limit: int
+    offset: int
+class BatchAnalysisDetailedItem(BaseModel):
+    """Detailed batch analysis item with full information"""
+    id: str
+    name: Optional[str] = None
+    timestamp: datetime
+    total_files: int
+    successful_files: int
+    failed_files: int
+    status: BatchAnalysisStatus
+    total_vulnerabilities: int
+    total_high_confidence: int
+    processing_time_seconds: Optional[float] = None
+    confidence_threshold: Optional[float] = None
+    source_type: Optional[str] = None
+    source_info: Optional[str] = None
+    error_message: Optional[str] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    
+    # Detailed file results
+    file_results: List[FileAnalysisResult] = []
+    
+    # Summary statistics
+    most_vulnerable_files: List[str] = []
+    
+    class Config:
+        use_enum_values = True
+
+class BatchAnalysisDetailedListResponse(BaseModel):
+    """Response schema for detailed batch analyses list"""
+    batch_analyses: List[BatchAnalysisDetailedItem]
     total: int
     limit: int
     offset: int

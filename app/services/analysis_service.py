@@ -28,8 +28,9 @@ class AnalysisService:
         file_size: int,
         results: Dict[str, Any],
         confidence_threshold: float,
+        name: str = None,
         model_version: str = None,
-        batch_analysis_id: str = None  # ← THÊM PARAMETER NÀY
+        batch_analysis_id: str = None
     ) -> str:
         """Save analysis results to database"""
         try:
@@ -39,6 +40,7 @@ class AnalysisService:
             
             # Create analysis record
             analysis = Analysis(
+                name=name,
                 file_name=file_name,
                 file_path=file_path,
                 file_size=file_size,
@@ -49,7 +51,7 @@ class AnalysisService:
                 model_version=model_version or results.get("model_version", "unknown"),
                 confidence_threshold=confidence_threshold,
                 results_json=json.dumps(results),
-                batch_analysis_id=batch_analysis_id,  # ← THÊM FIELD NÀY
+                batch_analysis_id=batch_analysis_id,
                 started_at=datetime.now(),
                 completed_at=datetime.now()
             )
@@ -71,18 +73,20 @@ class AnalysisService:
         file_size: int,
         error_message: str,
         confidence_threshold: float,
-        batch_analysis_id: str = None  # ← THÊM PARAMETER NÀY
+        name: str = None,
+        batch_analysis_id: str = None
     ) -> str:
         """Save failed analysis to database"""
         try:
             analysis = Analysis(
+                name=name,
                 file_name=file_name,
                 file_path=file_path,
                 file_size=file_size,
                 status="failed",
                 error_message=error_message,
                 confidence_threshold=confidence_threshold,
-                batch_analysis_id=batch_analysis_id,  # ← THÊM FIELD NÀY
+                batch_analysis_id=batch_analysis_id,
                 started_at=datetime.now(),
                 completed_at=datetime.now()
             )
@@ -140,6 +144,7 @@ class AnalysisService:
             for analysis in analyses:
                 item = AnalysisListItem(
                     id=analysis.id,
+                    name=analysis.name,
                     file_name=analysis.file_name,
                     timestamp=analysis.created_at,
                     vulnerabilities_found=analysis.vulnerabilities_count or 0,

@@ -26,13 +26,18 @@ class AnalysisStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
 
+class CodeSnippetSchema(BaseModel):
+    lineNumber: int
+    content: str
+    isHighlighted: bool
+
 class VulnerabilitySchema(BaseModel):
     line_number: int
     type: VulnerabilityType
     confidence: float = Field(ge=0.0, le=1.0)
     severity: SeverityLevel
     description: str
-    code_snippet: Optional[str] = None
+    code_snippet: Optional[List[CodeSnippetSchema]] = None
     api_type: str  # call/array/ptr/arith
     recommendation: Optional[str] = None
     
@@ -55,6 +60,7 @@ class AnalysisResultSchema(BaseModel):
     model_version: str
 
 class AnalysisCreateRequest(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=255, description="Tên mô tả cho phân tích")
     confidence_threshold: Optional[float] = Field(default=0.7, ge=0.0, le=1.0)
     
     class Config:
@@ -71,6 +77,7 @@ class AnalysisResponse(BaseModel):
 
 class AnalysisListItem(BaseModel):
     id: str
+    name: Optional[str] = None
     file_name: str
     timestamp: datetime
     vulnerabilities_found: int

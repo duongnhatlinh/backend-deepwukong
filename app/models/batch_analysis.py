@@ -11,6 +11,7 @@ class BatchAnalysis(BaseModel, Base):
     __tablename__ = "batch_analyses"
     
     # Basic info
+    name = Column(String, nullable=True)  # Tên phân tích batch do người dùng đặt
     total_files = Column(Integer, nullable=False, default=0)
     successful_files = Column(Integer, default=0)
     failed_files = Column(Integer, default=0)
@@ -45,6 +46,7 @@ class BatchAnalysis(BaseModel, Base):
         """Convert model to dictionary"""
         return {
             "id": self.id,
+            "name": self.name,
             "total_files": self.total_files,
             "successful_files": self.successful_files,
             "failed_files": self.failed_files,

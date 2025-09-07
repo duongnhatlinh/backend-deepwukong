@@ -181,6 +181,57 @@ class VulnerabilityDetector:
             
         return xfg
     
+
+    def get_vulnerability_snippet(self, file_path: str, key_line: int, xfg_nodes: List[int] = None, context_lines: int = 5) -> Dict:
+        """
+        Extract vulnerability snippet with context and optional XFG flow
+        
+        Args:
+            file_path: Path to source file
+            key_line: Line number where vulnerability is detected
+            xfg_nodes: List of line numbers in the XFG (optional)
+            context_lines: Number of lines to show around the key line
+        
+        Returns:
+            Dictionary containing snippet information
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                lines = f.readlines()
+            
+            # Level 1: Context snippet
+            start = max(0, key_line - context_lines - 1)  # -1 because key_line is 1-indexed
+            end = min(len(lines), key_line + context_lines)
+            
+            snippet = {
+                'type': 'context',
+                'lines': [line.rstrip('\n') for line in lines[start:end]],
+                'highlight_line_index': key_line - start - 1,  # Index within the snippet
+                'start_line_num': start + 1,
+                'key_line': key_line
+            }
+            
+            # Level 2: XFG flow (optional)
+            if xfg_nodes and len(xfg_nodes) > 1:
+                valid_nodes = [i for i in sorted(set(xfg_nodes)) if 0 < i <= len(lines)]
+                if valid_nodes:
+                    xfg_snippet = {
+                        'type': 'flow',
+                        'lines': [lines[i-1].rstrip('\n') for i in valid_nodes],
+                        'line_numbers': valid_nodes,
+                        'highlight_line': key_line
+                    }
+                    snippet['xfg_flow'] = xfg_snippet
+            
+            return snippet
+            
+        except Exception as e:
+            print(f"Error extracting snippet from {file_path}: {e}")
+            return {
+                'type': 'error',
+                'message': f"Could not extract code snippet: {e}"
+            }
+    
     def detect_files(self, source_path: str) -> List[Dict]:
         
         if not os.path.exists(source_path):
@@ -267,7 +318,8 @@ class VulnerabilityDetector:
                                 meta_data.append({
                                     'file_path': original_file,  # Use original path for reporting
                                     'key_line': xfg_sym.graph["key_line"],
-                                    'api_type': api_type
+                                    'api_type': api_type,
+                                    'xfg_nodes': list(xfg_sym.nodes())
                                 })
                             
                             except Exception as e:
@@ -294,6 +346,12 @@ class VulnerabilityDetector:
                         is_vulnerable = predictions[i].item() == 1
                         confidence = confidence_scores[i].item()
                         vuln_prob = probabilities[i][1].item()
+
+                        snippet = self.get_vulnerability_snippet(
+                            meta['file_path'], 
+                            meta['key_line'],
+                            meta.get('xfg_nodes', None)
+                        )
                         
                         result = {
                             'file_path': meta['file_path'],
@@ -302,7 +360,8 @@ class VulnerabilityDetector:
                             'is_vulnerable': is_vulnerable,
                             'confidence': confidence,
                             'vulnerability_probability': vuln_prob,
-                            'prediction_class': predictions[i].item()
+                            'prediction_class': predictions[i].item(),
+                            'code_snippet': snippet 
                         }
                         file_results.append(result)
                     
@@ -374,6 +433,24 @@ class VulnerabilityDetector:
         
         print(f"{'='*60}")
 
+        if vulnerable_results:
+            print(f"\nVULNERABLE CODE SNIPPETS:")
+            print("=" * 80)
+            
+            for i, result in enumerate(vulnerable_results[:5]):  # Show top 5
+                print(f"\n[{i+1}] {result['file_path']}:{result['line_number']}")
+                print(f"Type: {result['api_type']}, Confidence: {result['confidence']:.3f}")
+                
+                snippet = result.get('code_snippet', {})
+                if snippet.get('type') == 'context':
+                    print("Code context:")
+                    for j, line in enumerate(snippet['lines']):
+                        line_num = snippet['start_line_num'] + j
+                        marker = ">>> " if j == snippet.get('highlight_line_index', -1) else "    "
+                        print(f"{marker}{line_num:4d}: {line}")
+                
+                print("-" * 60)
+
 
 def configure_arg_parser() -> ArgumentParser:
     parser = ArgumentParser(description="Enhanced DeepWuKong Vulnerability Detector")
@@ -403,7 +480,8 @@ def main():
         # Initialize detector
         detector = VulnerabilityDetector(args.checkpoint)
 
-        results = detector.detect_files(args.source)        
+        results = detector.detect_files(args.source)
+        detector.print_summary(results)        
         
         # # Save results if requested
         # if args.output and os.path.isfile(args.source):
@@ -427,8 +505,8 @@ if __name__ == "__main__":
 
 
 # python src/enhanced_detect.py \
-#     -c /home/linh/Documents/code/DeepWukong/ts_logger/DeepWuKong/graph_balanced/version_0/checkpoints/epoch=79-step=90960-val_loss=0.0216.ckpt \
-#     -s /home/linh/Documents/code/DeepWukong/data_test/vulnerable_AP_BattMonitor_SMBus_Solo.cpp
+#     -c /home/linh/Documents/code/deepwukong-backend/storage/models/deepwukong_1.ckpt \
+#     -s /home/linh/Documents/code/deepwukong-backend/tests/fixtures/vulnerable_AP_AIS.cpp
 
 
 

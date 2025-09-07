@@ -187,7 +187,7 @@ class DeepWuKongService:
                 "confidence": round(result.get("confidence", 0.0), 3),
                 "severity": self._map_severity(result.get("confidence", 0.0)),
                 "description": self._get_description(result.get("api_type"), result.get("confidence", 0.0)),
-                "code_snippet": result.get("code_snippet"),
+                "code_snippet": self._format_code_snippet(result.get("code_snippet")),
                 "api_type": result.get("api_type", "unknown"),
                 "recommendation": self._get_recommendation(result.get("api_type"))
             }
@@ -269,6 +269,67 @@ class DeepWuKongService:
             "arith": "Validate arithmetic operations to prevent overflow. Use appropriate data types."
         }
         return recommendations.get(api_type, "Review code for potential security issues")
+    
+    def _format_code_snippet(self, snippet_data) -> Optional[List[Dict]]:
+        """Convert code snippet dictionary to list of CodeSnippetSchema objects"""
+        if not snippet_data or not isinstance(snippet_data, dict):
+            return None
+        
+        try:
+            snippet_type = snippet_data.get('type', 'unknown')
+            
+            if snippet_type == 'context':
+                lines = snippet_data.get('lines', [])
+                start_line_num = snippet_data.get('start_line_num', 1)
+                highlight_line_index = snippet_data.get('highlight_line_index', -1)
+                
+                if not lines:
+                    return None
+                
+                code_snippets = []
+                for i, line in enumerate(lines):
+                    line_num = start_line_num + i
+                    is_highlighted = (i == highlight_line_index)
+                    
+                    code_snippets.append({
+                        "lineNumber": line_num,
+                        "content": line,
+                        "isHighlighted": is_highlighted
+                    })
+                
+                return code_snippets
+            
+            elif snippet_type == 'error':
+                return [{
+                    "lineNumber": 0,
+                    "content": f"Error: {snippet_data.get('message', 'Unknown error')}",
+                    "isHighlighted": False
+                }]
+            
+            else:
+                # Fallback: try to extract any text content
+                if 'lines' in snippet_data:
+                    code_snippets = []
+                    for i, line in enumerate(snippet_data['lines']):
+                        code_snippets.append({
+                            "lineNumber": i + 1,
+                            "content": line,
+                            "isHighlighted": False
+                        })
+                    return code_snippets
+                
+                return [{
+                    "lineNumber": 0,
+                    "content": str(snippet_data),
+                    "isHighlighted": False
+                }]
+                
+        except Exception as e:
+            return [{
+                "lineNumber": 0,
+                "content": f"Error formatting snippet: {str(e)}",
+                "isHighlighted": False
+            }]
     
     def get_status(self) -> Dict:
         """Get current model status"""

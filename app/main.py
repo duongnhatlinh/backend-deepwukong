@@ -12,7 +12,10 @@ import os
 from app.config import settings
 from app.database import init_db
 from app.services.deepwukong_service import DeepWuKongService
+
+from app.services.settings_service import SettingsService
 from app.api import ai, analyze, health, batch_analyze
+from app.api import settings as settings_api
 from app.core.exceptions import setup_exception_handlers
 
 # Setup logging
@@ -35,6 +38,13 @@ async def lifespan(app: FastAPI):
         logger.info("📊 Initializing database...")
         init_db()
         logger.info("✅ Database initialized")
+
+        
+        # Initialize default settings
+        logger.info("⚙️  Initializing default settings...")
+        settings_service = SettingsService()
+        await settings_service.initialize_default_settings()
+        logger.info("✅ Default settings initialized")
         
         # Initialize DeepWukong service
         logger.info("🤖 Initializing DeepWukong service...")
@@ -106,6 +116,8 @@ app.include_router(health.router, prefix="/api", tags=["Health"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI Model"])
 app.include_router(analyze.router, prefix="/api", tags=["Analysis"])
 app.include_router(batch_analyze.router, prefix="/api", tags=["Batch Analysis"])
+
+app.include_router(settings_api.router, prefix="/api", tags=["Settings"])
 
 @app.get("/", tags=["Root"])
 async def root():
